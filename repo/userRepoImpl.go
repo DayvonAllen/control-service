@@ -98,11 +98,7 @@ func (u UserRepoImpl) FindByUsername(username string) (*domain.UserDto, error) {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
 
-	err := conn.UserCollection.FindOne(context.TODO(), bson.M{"username": username, "$and":
-	[]interface{}{
-		bson.M{"profileIsViewable": true,
-		},
-	}}).Decode(&u.userDto)
+	err := conn.UserCollection.FindOne(context.TODO(), bson.M{"username": username}).Decode(&u.userDto)
 
 	if err != nil {
 		// ErrNoDocuments means that the filter did not match any documents in the collection

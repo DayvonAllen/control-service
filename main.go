@@ -7,7 +7,9 @@ import (
 	"example.com/app/event-consumer"
 	"example.com/app/router"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"os"
@@ -20,15 +22,24 @@ func init() {
 	conn := database.MongoConnectionPool.Get().(*database.Connection)
 	defer database.MongoConnectionPool.Put(conn)
 
-	admin := domain.Admin{Username: "admin", Password: "password"}
-	admin.Id = primitive.NewObjectID()
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)
-	admin.Password = string(hashedPassword)
+	adminSearch := new(domain.Admin)
+	err := conn.AdminCollection.FindOne(context.TODO(), bson.M{"username": "admin"}).Decode(adminSearch)
 
-	_, err := conn.AdminCollection.InsertOne(context.TODO(), &admin)
+	if err != nil  {
+		if err == mongo.ErrNoDocuments {
+			admin := domain.Admin{Username: "admin", Password: "password"}
+			admin.Id = primitive.NewObjectID()
+			hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)
+			admin.Password = string(hashedPassword)
 
-	if err != nil {
-		panic("error processing data")
+			_, err := conn.AdminCollection.InsertOne(context.TODO(), &admin)
+
+			if err != nil {
+				panic("error processing data")
+			}
+			return
+		}
+		panic(err)
 	}
 }
 
